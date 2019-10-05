@@ -14,12 +14,23 @@ import android.os.RemoteException;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.View;
-import android.widget.Button;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import org.altbeacon.beacon.Beacon;
 import org.altbeacon.beacon.BeaconConsumer;
@@ -32,11 +43,7 @@ import org.altbeacon.beacon.Region;
 import java.util.ArrayList;
 import java.util.Collection;
 
-/**
- * App main activity, gestiona la detección de beacons, mostrando un mensaje de los beacons
- * detectados
- */
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, BeaconConsumer,
+public class MainActivity extends AppCompatActivity implements BeaconConsumer,
         RangeNotifier {
 
     protected final String TAG = MainActivity.this.getClass().getSimpleName();;
@@ -44,6 +51,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
     private static final long DEFAULT_SCAN_PERIOD_MS = 6000l;
     private static final String ALL_BEACONS_REGION = "AllBeaconsRegion";
+
+    //Usada en uploadLocationToFirebase
+    String lugar = "";
 
     // Para interactuar con los beacons desde una actividad
     private BeaconManager mBeaconManager;
@@ -56,53 +66,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        getStartButton().setOnClickListener(this);
-        getStopButton().setOnClickListener(this);
+        //Logout toolbar
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
 
         mBeaconManager = BeaconManager.getInstanceForApplication(this);
 
         // Fijar un protocolo beacon, Eddystone en este caso
-        mBeaconManager.getBeaconParsers().add(new BeaconParser().
-                setBeaconLayout(BeaconParser.EDDYSTONE_UID_LAYOUT));
+        mBeaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(BeaconParser.EDDYSTONE_UID_LAYOUT));
 
         ArrayList<Identifier> identifiers = new ArrayList<>();
 
         mRegion = new Region(ALL_BEACONS_REGION, identifiers);
-    }
 
-    @Override
-    public void onClick(View view) {
+        //ACTIVAR BT
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        mBluetoothAdapter.enable();
 
-        if (view.equals(findViewById(R.id.startReadingBeaconsButton))) {
+        //EMPIEZO A LEER BEACONS
+        //Versiones de Android > 6
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Si los permisos de localización todavía no se han concedido, solicitarlos
+            if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
+                    PackageManager.PERMISSION_GRANTED) {
 
-                // Si los permisos de localización todavía no se han concedido, solicitarlos
-                if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
-                        PackageManager.PERMISSION_GRANTED) {
+                askForLocationPermissions();
 
-                    askForLocationPermissions();
-
-                } else { // Permisos de localización concedidos
-
-                    prepareDetection();
-                }
-
-            } else { // Versiones de Android < 6
-
+            } else { // Permisos de localización concedidos
                 prepareDetection();
             }
 
-        } else if (view.equals(findViewById(R.id.stopReadingBeaconsButton))) {
+        } else { // Versiones de Android < 6
 
-            stopDetectingBeacons();
-
-            BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-            // Desactivar bluetooth
-            if (mBluetoothAdapter.isEnabled()) {
-                mBluetoothAdapter.disable();
-            }
+            prepareDetection();
         }
     }
 
@@ -124,7 +122,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 showToastMessage(getString(R.string.not_support_bluetooth_msg));
 
             } else if (mBluetoothAdapter.isEnabled()) {
-
                 startDetectingBeacons();
 
             } else {
@@ -166,13 +163,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // Enlazar al servicio de beacons. Obtiene un callback cuando esté listo para ser usado
         mBeaconManager.bind(this);
 
-        // Desactivar botón de comenzar
-        getStartButton().setEnabled(false);
-        getStartButton().setAlpha(.5f);
+        }
+    private void stopDetectingBeacons() {
 
-        // Activar botón de parar
-        getStopButton().setEnabled(true);
-        getStopButton().setAlpha(1);
+        try {
+            mBeaconManager.stopMonitoringBeaconsInRegion(mRegion);
+            //showToastMessage(getString(R.string.stop_looking_for_beacons));
+        } catch (RemoteException e) {
+            Log.d(TAG, "Se ha producido una excepción al parar de buscar beacons " + e.getMessage());
+        }
+
+        mBeaconManager.removeAllRangeNotifiers();
+
+        // Desenlazar servicio de beacons
+        mBeaconManager.unbind(this);
     }
 
     @Override
@@ -183,7 +187,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // actualizaciones en la distancia estimada
             mBeaconManager.startRangingBeaconsInRegion(mRegion);
 
-            showToastMessage(getString(R.string.start_looking_for_beacons));
+            //showToastMessage(getString(R.string.start_looking_for_beacons));
 
         } catch (RemoteException e) {
             Log.d(TAG, "Se ha producido una excepción al empezar a buscar beacons " + e.getMessage());
@@ -199,38 +203,81 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     @Override
     public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (mBluetoothAdapter.isEnabled()) {
+            if (beacons.size() == 0) {
+                String t = getString(R.string.no_beacons_detected);
+                TextView textView = findViewById(R.id.textView);
+                textView.setText(t);
+            }
 
-        if (beacons.size() == 0) {
-            showToastMessage(getString(R.string.no_beacons_detected));
+            for (Beacon beacon : beacons) {
+                String uid = beacon.getId1().toString();
+                String t = "Beacon con UID " + uid + " encontrado";
+                TextView textView = findViewById(R.id.textView);
+                textView.setText(t);
+                double distancia = beacon.getDistance() / 10.0;
+                t = "Distancia: " + distancia;
+                TextView textView2 = findViewById(R.id.textView2);
+                textView2.setText(t);
+                double potencia = beacon.getTxPower() + 41;
+                t = "Potencia: " + potencia;
+                TextView textView3 = findViewById(R.id.textView3);
+                textView3.setText(t);
+                upLoadLocationToFirebase(uid);
+            }
+        } else {
+            // Pedir al usuario que active el bluetooth
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH);
         }
 
-        for (Beacon beacon : beacons) {
-            showToastMessage(getString(R.string.beacon_detected, beacon.getId1()));
-            //showToastMessage(beacon.);
-        }
     }
+private void upLoadLocationToFirebase(String uid){
+        boolean flag = true;
 
-    private void stopDetectingBeacons() {
-
-        try {
-            mBeaconManager.stopMonitoringBeaconsInRegion(mRegion);
-            showToastMessage(getString(R.string.stop_looking_for_beacons));
-        } catch (RemoteException e) {
-            Log.d(TAG, "Se ha producido una excepción al parar de buscar beacons " + e.getMessage());
+        switch (uid){
+            case "0xffffffffffffffffffff":
+                lugar = "Lugar1";
+            break;
+            default:
+                flag = false;
         }
 
-        mBeaconManager.removeAllRangeNotifiers();
+        if (flag){
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user != null) {
+                String userUid = user.getUid();
 
-        // Desenlazar servicio de beacons
-        mBeaconManager.unbind(this);
+                DatabaseReference myRef = FirebaseDatabase.getInstance().getReference().child("Users").child(userUid).child("Name");
 
-        // Activar botón de comenzar
-        getStartButton().setEnabled(true);
-        getStartButton().setAlpha(1);
+                ValueEventListener postListener = new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        // Get Post object and use the values to update the UI
+                        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                        String email = user.getEmail();
+                        //Separa usuario del dominio
+                        int index = email.indexOf('@');
+                        email = email.substring(0,index);
+                        //
 
-        // Desactivar botón de parar
-        getStopButton().setEnabled(false);
-        getStopButton().setAlpha(.5f);
+                        String name = dataSnapshot.getValue().toString();
+
+                        DatabaseReference mDatabase;// ...
+                        mDatabase = FirebaseDatabase.getInstance().getReference();
+                        mDatabase.child(lugar).child("Personas adentro").child(name).child("Matrícula").setValue(email);
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+                        // Getting Post failed, log a message
+                        Log.w(TAG, "loadPost:onCancelled", databaseError.toException());
+                    }
+                };
+                myRef.addValueEventListener(postListener);
+            }
+        }
     }
 
     /**
@@ -322,23 +369,38 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         dialog.show();
     }
 
-    private Button getStartButton() {
-        return (Button) findViewById(R.id.startReadingBeaconsButton);
-    }
-
-    private Button getStopButton() {
-        return (Button) findViewById(R.id.stopReadingBeaconsButton);
-    }
-
     /**
      * Mostrar mensaje
      *
      * @param message mensaje a enseñar
      */
     private void showToastMessage (String message) {
-        Toast toast = Toast.makeText(this, message, Toast.LENGTH_LONG);
-        toast.setGravity(Gravity.CENTER, 0, 0);
+        Toast toast = Toast.makeText(this, message, Toast.LENGTH_SHORT);
+        toast.setGravity(Gravity.BOTTOM, 0, 0);
         toast.show();
+    }
+//Crear el toolbar
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.logout_menu, menu);
+        return true;
+    }
+//Seleccionar boton en toolbar
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.menuLogout:
+                    FirebaseAuth.getInstance().signOut();
+                    stopDetectingBeacons();
+                    finish();
+                    startActivity(new Intent(
+                            this,
+                            Login.class
+                    ));
+                break;
+        }
+        return true;
     }
 
     @Override

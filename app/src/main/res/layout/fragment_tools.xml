@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/current_pasword_manage_account"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Contraseña Actual"
+            android:inputType="textPassword" />
+
+        <EditText
+            android:id="@+id/new_pasword_manage_account"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nueva Contraseña"
+            android:inputType="textPassword" />
+
+        <EditText
+            android:id="@+id/confirm_new_pasword_manage_account"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Confirma Nueva Contraseña"
+            android:inputType="textPassword" />
+
+        <Button
+            android:id="@+id/change_password_button_manage_account"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cambiar Contraseña" />
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

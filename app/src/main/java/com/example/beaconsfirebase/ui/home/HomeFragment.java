@@ -1,4 +1,18 @@
-package com.example.beaconsfirebase;
+package com.example.beaconsfirebase.ui.home;
+
+import android.content.ServiceConnection;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.ViewModelProviders;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -48,10 +62,14 @@ import org.altbeacon.beacon.Region;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class MainActivity extends AppCompatActivity implements BeaconConsumer,
-       RangeNotifier {
+import com.example.beaconsfirebase.R;
 
-    protected final String TAG = MainActivity.this.getClass().getSimpleName();;
+import static android.app.Activity.RESULT_CANCELED;
+import static android.app.Activity.RESULT_OK;
+
+public class HomeFragment extends Fragment implements BeaconConsumer, RangeNotifier {
+
+    protected final String TAG = HomeFragment.this.getClass().getSimpleName();;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
     private static final long DEFAULT_SCAN_PERIOD_MS = 6000l;
@@ -65,23 +83,25 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
 
     // Representa el criterio de campos con los que buscar beacons
     private Region mRegion;
+    private HomeViewModel homeViewModel;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             ViewGroup container, Bundle savedInstanceState) {
+        //homeViewModel = ViewModelProviders.of(this).get;
+        homeViewModel = ViewModelProviders.of(this).get(HomeViewModel.class);
+        View root = inflater.inflate(R.layout.fragment_home, container, false);
+        /*final TextView textView = root.findViewById(R.id.text_home);
+        homeViewModel.getText().observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(@Nullable String s) {
+                textView.setText(s);
 
-        //Logout toolbar
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        toolbar.getOverflowIcon().setColorFilter(Color.WHITE , PorterDuff.Mode.SRC_ATOP);
-        /*//Drawer
-        drawer = findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawer,toolbar,
-                R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.addDrawerListener(toggle);
-        toggle.syncState();*/
-        mBeaconManager = BeaconManager.getInstanceForApplication(this);
+            }
+        });*/
+
+
+        /**/
+        mBeaconManager = BeaconManager.getInstanceForApplication(getContext());
 
         // Fijar un protocolo beacon, Eddystone en este caso
         mBeaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(BeaconParser.EDDYSTONE_UID_LAYOUT));
@@ -99,7 +119,7 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
             // Si los permisos de localización todavía no se han concedido, solicitarlos
-            if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
+            if (getContext().checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
                     PackageManager.PERMISSION_GRANTED) {
 
                 askForLocationPermissions();
@@ -112,6 +132,7 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
 
             prepareDetection();
         }
+        return root;
     }
 
 
@@ -145,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
         if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
 
@@ -174,7 +195,7 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
         // Enlazar al servicio de beacons. Obtiene un callback cuando esté listo para ser usado
         mBeaconManager.bind(this);
 
-        }
+    }
     private void stopDetectingBeacons() {
 
         try {
@@ -207,6 +228,21 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
         mBeaconManager.addRangeNotifier(this);
     }
 
+    @Override
+    public Context getApplicationContext() {
+        return null;
+    }
+
+    @Override
+    public void unbindService(ServiceConnection serviceConnection) {
+
+    }
+
+    @Override
+    public boolean bindService(Intent intent, ServiceConnection serviceConnection, int i) {
+        return false;
+    }
+
 
     /**
      * Método llamado cada DEFAULT_SCAN_PERIOD_MS segundos con los beacons detectados durante ese
@@ -218,22 +254,22 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
         if (mBluetoothAdapter.isEnabled()) {
             if (beacons.size() == 0) {
                 String t = getString(R.string.no_beacons_detected);
-                TextView textView = findViewById(R.id.textView);
+                TextView textView = getView().findViewById(R.id.textView);
                 textView.setText(t);
             }
 
             for (Beacon beacon : beacons) {
                 String uid = beacon.getId1().toString();
                 String t = "Beacon con UID " + uid + " encontrado";
-                TextView textView = findViewById(R.id.textView);
+                TextView textView = getView().findViewById(R.id.textView);
                 textView.setText(t);
                 double distancia = beacon.getDistance() / 10.0;
                 t = "Distancia: " + distancia;
-                TextView textView2 = findViewById(R.id.textView2);
+                TextView textView2 = getView().findViewById(R.id.textView2);
                 textView2.setText(t);
                 double potencia = beacon.getTxPower() + 41;
                 t = "Potencia: " + potencia;
-                TextView textView3 = findViewById(R.id.textView3);
+                TextView textView3 = getView().findViewById(R.id.textView3);
                 textView3.setText(t);
                 upLoadLocationToFirebase(uid);
             }
@@ -244,13 +280,13 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer,
         }
 
     }
-private void upLoadLocationToFirebase(String uid){
+    private void upLoadLocationToFirebase(String uid){
         boolean flag = true;
 
         switch (uid){
             case "0xffffffffffffffffffff":
                 lugar = "Lugar1";
-            break;
+                break;
             default:
                 flag = false;
         }
@@ -296,7 +332,7 @@ private void upLoadLocationToFirebase(String uid){
      */
     private void askForLocationPermissions() {
 
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle(R.string.location_access_needed);
         builder.setMessage(R.string.grant_location_access);
         builder.setPositiveButton(android.R.string.ok, null);
@@ -318,7 +354,7 @@ private void upLoadLocationToFirebase(String uid){
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     prepareDetection();
                 } else {
-                    final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
                     builder.setTitle(R.string.funcionality_limited);
                     builder.setMessage(getString(R.string.location_not_granted) +
                             getString(R.string.cannot_discover_beacons));
@@ -343,7 +379,7 @@ private void upLoadLocationToFirebase(String uid){
      */
     private boolean isLocationEnabled() {
 
-        LocationManager lm = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        LocationManager lm = (LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
 
         boolean networkLocationEnabled = false;
 
@@ -367,7 +403,7 @@ private void upLoadLocationToFirebase(String uid){
     private void askToTurnOnLocation() {
 
         // Notificar al usuario
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        AlertDialog.Builder dialog = new AlertDialog.Builder(getContext());
         dialog.setMessage(R.string.location_disabled);
         dialog.setPositiveButton(R.string.location_settings, new DialogInterface.OnClickListener() {
             @Override
@@ -386,38 +422,25 @@ private void upLoadLocationToFirebase(String uid){
      * @param message mensaje a enseñar
      */
     private void showToastMessage (String message) {
-        Toast toast = Toast.makeText(this, message, Toast.LENGTH_SHORT);
+        Toast toast = Toast.makeText(getContext(), message, Toast.LENGTH_SHORT);
         toast.setGravity(Gravity.BOTTOM, 0, 0);
         toast.show();
     }
-//Crear el toolbar
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.logout_menu, menu);
-        return true;
-    }
-//Seleccionar boton en toolbar
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()){
-            case R.id.menuLogout:
-                    FirebaseAuth.getInstance().signOut();
-                    stopDetectingBeacons();
-                    finish();
-                    startActivity(new Intent(
-                            this,
-                            Login.class
-                    ));
-                break;
-        }
-        return true;
-    }
 
+    //Se ejecuta cuando cambias de fragmento
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    public void onDestroyView() {
+        super.onDestroyView();
+        stopDetectingBeacons();
         mBeaconManager.removeAllRangeNotifiers();
         mBeaconManager.unbind(this);
+    }
+
+//Se ejecuta cuando sales del drawer activity
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+
     }
 }

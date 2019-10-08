@@ -108,7 +108,7 @@ class Login : AppCompatActivity() {
     fun updateUI(currentUser : FirebaseUser?){
         if(currentUser != null){
             if(currentUser.isEmailVerified){
-                startActivity(Intent(this, MainActivity::class.java))
+                startActivity(Intent(this, Drawer::class.java))
             }else{
                 Toast.makeText(baseContext, "Por favor verifica tu cuenta desde tu correo.",
                         Toast.LENGTH_SHORT).show()

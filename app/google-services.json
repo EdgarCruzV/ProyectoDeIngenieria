@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "447682404204",
+    "firebase_url": "https://beaconsfirebase.firebaseio.com",
+    "project_id": "beaconsfirebase",
+    "storage_bucket": "beaconsfirebase.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:447682404204:android:240441769d3db0c2dddd49",
+        "android_client_info": {
+          "package_name": "com.example.beaconsfirebase"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "447682404204-k1dci6r2udndh6p2j98f589dp35dfvh0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.beaconsfirebase",
+            "certificate_hash": "b1bd21923fc89513e55a16cdab253ed56647b168"
+          }
+        },
+        {
+          "client_id": "447682404204-v7msin16ufrgan1125sc6lsjfe11rsu1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIUkpt0Azs9qq_hljXbL7QJDtF9qzB8r8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "447682404204-v7msin16ufrgan1125sc6lsjfe11rsu1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
